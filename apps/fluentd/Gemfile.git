@@ -1,0 +1,1 @@
+gem 'fluent-plugin-swift', :git => 'https://github.com/pli01/fluent-plugin-swift.git'

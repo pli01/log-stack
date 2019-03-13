@@ -1,0 +1,100 @@
+EFK_SERVICE_NAME = efk
+EFK_DOCKER_COMPOSE_BUILD = ${DC_PREFIX}-build-$(EFK_SERVICE_NAME).yml
+EFK_DOCKER_COMPOSE_RUN = ${DC_PREFIX}-run-$(EFK_SERVICE_NAME).yml
+EFK_PULL_IMAGES = elasticsearch nginx kibana
+
+EFK_BUILD_IMAGES = elasticsearch curator kibana nginx fluentd
+
+# Image name:version
+export nginx_image_full = nginx:1.14
+export fluentd_image_full = ${APP}-fluentd:v1.1.3-debian
+export elasticsearch_image_full = docker.elastic.co/elasticsearch/elasticsearch-oss:6.2.4
+export kibana_image_full = docker.elastic.co/kibana/kibana-oss:6.2.4
+export curator_image_full = ${APP}-curator:stretch
+
+# Env build (ARG)
+export MIRROR_DEBIAN = $(shell echo $$MIRROR_DEBIAN )
+export RUBY_URL = $(shell echo $$RUBY_URL )
+export PYPI_URL = $(shell echo $$PYPI_URL )
+export PYPI_HOST = $(shell echo $$PYPI_HOST )
+
+# Env run (ENV)
+export efk_stack_conf_dir = ${APP_PATH}/$(EFK_SERVICE_NAME)-conf
+export efk_stack_data_dir = ${APP_DATA}
+export kibana_access_conf_file = ${efk_stack_conf_dir}/nginx/efk_blockips.conf
+
+$(EFK_SERVICE_NAME)-build: $(EFK_SERVICE_NAME)-build-image build-dir $(EFK_SERVICE_NAME)-save-image
+
+$(EFK_SERVICE_NAME)-clean: $(EFK_SERVICE_NAME)-clean-image
+
+$(EFK_SERVICE_NAME)-build-image: $(EFK_SERVICE_NAME)-check-config-image $(EFK_SERVICE_NAME)-pull-image
+	@echo building ${APP} $(EFK_SERVICE_NAME)
+	( cd ${APP_PATH} && ${DC} -f $(EFK_DOCKER_COMPOSE_BUILD) build )
+
+$(EFK_SERVICE_NAME)-list-services:
+	@( cd ${APP_PATH} && ${DC} -f $(EFK_DOCKER_COMPOSE_BUILD) config --services )
+
+$(EFK_SERVICE_NAME)-check-config-image:
+	@( cd ${APP_PATH} && ${DC} -f $(EFK_DOCKER_COMPOSE_BUILD) config -q )
+
+$(EFK_SERVICE_NAME)-pull-image:
+	@echo pull ${APP} $(EFK_SERVICE_NAME)
+	if [ ! -z "$(EFK_PULL_IMAGES)" ] ; then ( cd ${APP_PATH} && ${DC} -f $(EFK_DOCKER_COMPOSE_BUILD) pull $(EFK_PULL_IMAGES) ) ; fi
+
+$(EFK_SERVICE_NAME)-save-image:
+	for service in $(EFK_BUILD_IMAGES) ; do \
+	image_name=$$(cd ${APP_PATH} && ${DC} -f $(EFK_DOCKER_COMPOSE_BUILD) config | \
+	python -c 'import sys, yaml, json; cfg = json.loads(json.dumps(yaml.load(sys.stdin), sys.stdout, indent=4)); print cfg["services"]["'$$service'"]["image"]') ; \
+	  docker image save -o  $(BUILD_DIR)/$(APP)-$(EFK_SERVICE_NAME)-$$service-latest-image.tar $$image_name ; \
+	  cp $(BUILD_DIR)/$(APP)-$(EFK_SERVICE_NAME)-$$service-latest-image.tar $(BUILD_DIR)/$(APP)-$(EFK_SERVICE_NAME)-$$service-$(APP_VERSION)-image.tar ; \
+	done
+
+$(EFK_SERVICE_NAME)-clean-image:
+	@(cd ${APP_PATH} && ${DC} -f $(EFK_DOCKER_COMPOSE_BUILD) config | \
+           python -c 'import sys, yaml, json; json.dump(yaml.load(sys.stdin), sys.stdout, indent=4)' | \
+           jq -r '.services[] | . as $(dollar)a | select($(dollar)a.build) | .image' ) | while read image_name ; do \
+           docker rmi $$image_name || true ; \
+        done
+
+$(EFK_SERVICE_NAME)-publish:
+	@echo "Publish $(APP) $(APP_VERSION) $(EFK_SERVICE_NAME) artifacts"
+	if [ -z "$(dml_url)" -o -z "$(openstack_token)" ] ; then exit 1 ; fi
+	( cd $(BUILD_DIR) ;\
+	    for service in \
+                $(EFK_BUILD_IMAGES) \
+           ; do \
+            file=$(APP)-$(EFK_SERVICE_NAME)-$$service-$(APP_VERSION)-image.tar ; \
+            latest=$(APP)-$(EFK_SERVICE_NAME)-$$service-latest-image.tar ; \
+            curl $(curl_args) -k -X PUT -T $$file -H 'X-Auth-Token: $(openstack_token)' $(dml_url)/$(publish_dir)/$(APP_VERSION)/$$file ; \
+            curl $(curl_args) -k -X PUT -T $$latest -H 'X-Auth-Token: $(openstack_token)' $(dml_url)/$(publish_dir)/latest/$$latest ; \
+           done ; \
+	)
+
+$(EFK_SERVICE_NAME)-load-image:
+	( cd ${APP_PATH} && ${DC} -f $(EFK_DOCKER_COMPOSE_RUN) config --services | while read service; do \
+	  docker load -i $(BUILD_DIR)/$(APP)-$(EFK_SERVICE_NAME)-$$service-$(APP_VERSION)-image.tar ; \
+	 done )
+
+$(EFK_SERVICE_NAME)-get-build-image: build-dir
+	( cd ${APP_PATH} && ${DC} -f $(EFK_DOCKER_COMPOSE_RUN) config --services | while read service; do \
+            file=$(APP)-$(EFK_SERVICE_NAME)-$$service-$(APP_VERSION)-image.tar ; \
+            curl $(curl_args) -k -X GET -L $(dml_url)/$(publish_dir)/$(APP_VERSION)/$$file -o $(BUILD_DIR)/$$file ; \
+	 done )
+
+$(EFK_SERVICE_NAME)-genere-config:
+	@echo "## generate kibana ip access restriction"
+	grep "^#" ${kibana_access_conf_file}.template | tee ${kibana_access_conf_file}.new && \
+	  ( echo '${KIBANA_ACCESS_LIST}' | \
+            jq -r 'if to_entries|length>0 then to_entries | map(if .value|length>0 then "allow \(.value);" else empty end ) | .[] else empty end' ; \
+            echo 'deny all;' ) | tee -a ${kibana_access_conf_file}.new ; \
+         mv ${kibana_access_conf_file}.new ${kibana_access_conf_file}
+
+$(EFK_SERVICE_NAME)-up: $(EFK_SERVICE_NAME)-genere-config
+	@[ -f $$HOME/.openrc.sh ] && source $$HOME/.openrc.sh ; \
+	   ( cd ${APP_PATH} && ${DC} -f $(EFK_DOCKER_COMPOSE_RUN) up -d 2>&1 | grep -v orphan )
+$(EFK_SERVICE_NAME)-stop:
+	@( cd ${APP_PATH} && ${DC} -f $(EFK_DOCKER_COMPOSE_RUN) stop )
+$(EFK_SERVICE_NAME)-rm:
+	@( cd ${APP_PATH} && ${DC} -f $(EFK_DOCKER_COMPOSE_RUN) rm )
+$(EFK_SERVICE_NAME)-down:
+	@( cd ${APP_PATH} && ${DC} -f $(EFK_DOCKER_COMPOSE_RUN) down )

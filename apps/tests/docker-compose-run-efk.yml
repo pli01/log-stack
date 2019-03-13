@@ -1,0 +1,125 @@
+version: '3.0'
+networks:
+  prodnetwork:
+    driver: bridge
+    driver_opts:
+      com.docker.network.driver.mtu: 1450
+services:
+  testrunner:
+    image: "${testrunner_image_full}"
+    restart: always
+    networks:
+      prodnetwork:
+        aliases:
+          - testrunner
+    depends_on:
+      - elasticsearch
+      - fluentd
+    volumes:
+      - "nginx_config:/etc/nginx/conf.d:rw"
+      - "fluentd_config:/fluentd/etc:rw"
+      - "fluentd_data:/fluentd/log"
+      - "elastic_data:/usr/share/elasticsearch/data"
+
+  nginx:
+    image: "${nginx_image_full}"
+    depends_on:
+      - kibana
+    networks:
+      prodnetwork:
+        aliases:
+          - nginx
+    ports:
+#  environnement test
+      - 80
+#  environnement reel
+#      - 80:80
+    restart: always
+    volumes:
+#      - "${efk_stack_conf_dir}/nginx/efk_80.conf:/etc/nginx/conf.d/default.conf:ro"
+      - "nginx_config:/etc/nginx/conf.d:ro"
+
+  fluentd:
+    image: "${fluentd_image_full}"
+    depends_on:
+      - elasticsearch
+    restart: always
+    networks:
+      prodnetwork:
+        aliases:
+          - fluentd
+    ports:
+#  environnement reel
+#      - 24224:24224
+#      - 5140:5140
+#      - 514:10514/udp
+#  environnement test
+      - 24224
+      - 5140
+      - 10514/udp
+    volumes:
+      - "fluentd_config:/fluentd/etc:rw"
+      - "fluentd_data:/fluentd/log"
+#      - "${efk_stack_conf_dir}/fluentd/conf:/fluentd/etc:rw"
+#      - "${efk_stack_data_dir}/logs:/DATA/logs"
+
+  elasticsearch:
+    image: "${elasticsearch_image_full}"
+    restart: always
+    networks:
+      prodnetwork:
+        aliases:
+          - elasticsearch
+    ports:
+#      - 9200:9200
+# test:
+      - 9200
+    volumes:
+      - "elastic_data:/usr/share/elasticsearch/data"
+#      - "${efk_stack_data_dir}/esdata:/usr/share/elasticsearch/data"
+    environment:
+      - cluster.name=docker-cluster
+      - discovery.type=single-node
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms${ES_MEM} -Xmx${ES_MEM}"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+
+  kibana:
+    image: "${kibana_image_full}"
+    ports: [ '5601' ]
+    depends_on:
+      - elasticsearch
+    restart: always
+    networks:
+      prodnetwork:
+        aliases:
+          - kibana
+    environment:
+      - SERVER_BASEPATH=/kibana
+
+  curator:
+    image: "${curator_image_full}"
+    environment:
+      UNIT_COUNT: 10
+      UNIT: days
+      DISK_SPACE: 10
+      ES_HOST: elasticsearch
+    depends_on:
+      - elasticsearch
+    restart: always
+    networks:
+      prodnetwork:
+        aliases:
+          - curator
+#    volumes:
+#      - "${efk_stack_conf_dir}/curator/config:/config:ro"
+
+#  environnement test
+volumes:
+  nginx_config:
+  fluentd_config:
+  fluentd_data:
+  elastic_data:

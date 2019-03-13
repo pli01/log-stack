@@ -1,0 +1,5 @@
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+# hourly
+0 * * * * curator --config /config/config_file.yml /config/action_file.yml 2>&1
+# daily
+#0 0 * * * curator --config /config/config_file.yml /config/action_file.yml

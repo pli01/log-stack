@@ -1,0 +1,98 @@
+version: '3.0'
+networks:
+  prodnetwork:
+    driver: bridge
+    driver_opts:
+      com.docker.network.driver.mtu: 1450
+services:
+  nginx:
+    image: "${nginx_image_full}"
+    depends_on:
+      - kibana
+    networks:
+      prodnetwork:
+        aliases:
+          - nginx
+    ports:
+      - 80:80
+    restart: always
+    volumes:
+      - "${efk_stack_conf_dir}/nginx/efk_blockips.conf:/etc/nginx/conf.d/00-blockips.conf:ro"
+      - "${efk_stack_conf_dir}/nginx/efk_80.conf:/etc/nginx/conf.d/default.conf:ro"
+
+  fluentd:
+    image: "${fluentd_image_full}"
+    depends_on:
+      - elasticsearch
+    restart: always
+    environment:
+       - OS_AUTH_URL
+       - OS_USERNAME
+       - OS_PASSWORD
+       - OS_PROJECT_NAME
+       - OS_PROJECT_DOMAIN_NAME
+       - OS_REGION_NAME
+    networks:
+      prodnetwork:
+        aliases:
+          - fluentd
+    ports:
+      - 24224:24224
+      - 5140:5140
+      - 514:10514/udp
+    volumes:
+      - "${efk_stack_conf_dir}/fluentd/conf:/fluentd/etc:rw"
+      - "${efk_stack_data_dir}/logs:/fluentd/log"
+
+  elasticsearch:
+    image: "${elasticsearch_image_full}"
+    restart: always
+    networks:
+      prodnetwork:
+        aliases:
+          - elasticsearch
+    ports:
+      - 9200:9200
+    volumes:
+      - "${efk_stack_data_dir}/esdata:/usr/share/elasticsearch/data"
+    environment:
+      - cluster.name=docker-cluster
+      - discovery.type=single-node
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms${ES_MEM} -Xmx${ES_MEM}"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+
+  kibana:
+    image: "${kibana_image_full}"
+    ports: [ '5601' ]
+    depends_on:
+      - elasticsearch
+    restart: always
+    networks:
+      prodnetwork:
+        aliases:
+          - kibana
+    environment:
+      - SERVER_BASEPATH=/kibana
+
+  curator:
+    image: "${curator_image_full}"
+    environment:
+#      UNIT_COUNT: 10
+#      UNIT: days
+      UNIT_COUNT: 1
+      UNIT: months
+      DISK_SPACE: 10
+      ES_HOST: elasticsearch
+    depends_on:
+      - elasticsearch
+    restart: always
+    networks:
+      prodnetwork:
+        aliases:
+          - curator
+#    volumes:
+#      - "${efk_stack_conf_dir}/curator/config:/config:ro"

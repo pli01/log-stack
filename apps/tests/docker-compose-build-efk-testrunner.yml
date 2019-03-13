@@ -1,0 +1,24 @@
+version: '3.0'
+networks:
+  prodnetwork:
+    driver: bridge
+    driver_opts:
+      com.docker.network.driver.mtu: 1450
+services:
+  testrunner:
+    image: "${testrunner_image_full}"
+    build:
+      context: testrunner
+      dockerfile: Dockerfile
+      args:
+        - http_proxy=$http_proxy
+        - https_proxy=$https_proxy
+        - no_proxy=$no_proxy
+        - PYPI_URL
+        - PYPI_HOST
+        - MIRROR_DEBIAN
+        - RUBY_URL
+    networks:
+      prodnetwork:
+        aliases:
+          - testrunner

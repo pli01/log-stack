@@ -1,0 +1,12 @@
+# Allow/Deny IP Range
+#
+## To block all ips
+# deny all;
+#
+## To allow all ips
+# allow all;
+#
+# To allow IP or subnet
+# allow x.x.x.x;
+# allow x.x.x.x/24;
+# deny all;

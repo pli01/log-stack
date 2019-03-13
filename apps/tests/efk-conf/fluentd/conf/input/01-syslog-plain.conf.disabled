@@ -1,0 +1,14 @@
+# Simple syslog input/parse
+<source>
+  @type syslog
+  port 10514
+  bind 0.0.0.0
+  tag syslog
+  <parse>
+    @type syslog
+    with_priority true
+    keep_time_key
+  </parse>
+  priority_key priority
+  facility_key facility
+</source>

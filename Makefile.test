@@ -1,0 +1,30 @@
+#
+# unit-test
+#
+# export all variable
+include Makefile
+
+export
+include ${APP_PATH}/tests/Makefile
+
+unit-test: efk-test
+#
+#
+$(EFK_SERVICE_NAME)-test: $(EFK_SERVICE_NAME)-prepare-test $(EFK_SERVICE_NAME)-run-test $(EFK_SERVICE_NAME)-clean-test
+
+$(EFK_SERVICE_NAME)-prepare-test: $(EFK_SERVICE_NAME)-genere-config
+	@echo "# $@ "
+	time ( cd ${TEST_APP_PATH} && $(MAKE) prepare-test )
+$(EFK_SERVICE_NAME)-run-test:
+	@echo "# $@"
+	time ( cd ${TEST_APP_PATH} && $(MAKE) run-test )
+$(EFK_SERVICE_NAME)-down-test:
+	@echo "# $@"
+	time ( cd ${TEST_APP_PATH} && $(MAKE) down-test )
+$(EFK_SERVICE_NAME)-clean-test:
+	@echo "# $@"
+	time ( cd ${TEST_APP_PATH} && $(MAKE) clean-test )
+$(EFK_SERVICE_NAME)-log-test:
+	@echo "# $@"
+	( cd ${TEST_APP_PATH} && $(MAKE) log-test )
+
