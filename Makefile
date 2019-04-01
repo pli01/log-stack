@@ -11,8 +11,7 @@ export APP = log-stack
 export ROOT_DIR= $(shell pwd)
 export APP_PATH := $(shell cd apps && pwd)
 export APP_DATA := $(APP_PATH)
-export BUILD_TIME=$(shell date '+%Y%m%d-%H%M%S')
-export APP_VERSION := $(shell git describe --tags --always --dirty=-$(BUILD_TIME)-snapshot || cat VERSION || date +%Y%m%d )
+export APP_VERSION := $(shell bash ./ci/version.sh 2>&- || cat VERSION)
 export DC_DIR=${APP_PATH}
 export DC_PREFIX=${DC_DIR}/docker-compose
 export BUILD_DIR=${ROOT_DIR}/${APP}-${APP_VERSION}-build
@@ -25,6 +24,15 @@ export publish_dir = log-stack
 
 export dollar = $(shell echo \$$)
 export curl_args = $(shell echo $$curl_args)
+# detect tty
+export DOCKER_USE_TTY := $(shell test -t 1 && echo "-t" )
+export DC_USE_TTY     := $(shell test -t 1 || echo "-T" )
+
+#
+# cli docker-compose
+export DC_BUILD_ARGS := --pull --no-cache --force-rm
+export DC_RUN_ARGS   := -d --no-build
+
 export ES_MEM=2048m
 export ES_HOST=elasticsearch
 export KIBANA_ACCESS_LIST := ["all"]

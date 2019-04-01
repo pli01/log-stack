@@ -15,11 +15,13 @@ services:
     depends_on:
       - elasticsearch
       - fluentd
+      - metricbeat
     volumes:
       - "nginx_config:/etc/nginx/conf.d:rw"
       - "fluentd_config:/fluentd/etc:rw"
       - "fluentd_data:/fluentd/log"
       - "elastic_data:/usr/share/elasticsearch/data"
+      - "metricbeat_config:/metricbeat"
 
   nginx:
     image: "${nginx_image_full}"
@@ -117,9 +119,26 @@ services:
 #    volumes:
 #      - "${efk_stack_conf_dir}/curator/config:/config:ro"
 
+  metricbeat:
+    image: "${metricbeat_image_full}"
+    user: root
+    depends_on:
+      - elasticsearch
+      - kibana
+    networks:
+      prodnetwork:
+        aliases:
+          - metricbeat
+    command: ["--strict.perms=false", "--path.config", "/metricbeat"]
+    volumes:
+      - "metricbeat_config:/metricbeat:ro"
+      - "metricbeat_data:/usr/share/metricbeat/data:rw"
+
 #  environnement test
 volumes:
   nginx_config:
   fluentd_config:
   fluentd_data:
   elastic_data:
+  metricbeat_config:
+  metricbeat_data:

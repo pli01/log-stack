@@ -1,0 +1,7 @@
+  - type: icmp
+    schedule: '@every 5s'
+    hosts:
+      - elasticsearch
+      - kibana
+    enabled: true
+

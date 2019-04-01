@@ -4,7 +4,7 @@
 #
 set -e
 
-cat > /config/crontab.run <<EOF
+cat > /tmp/crontab.run <<EOF
 # configuration
 UNIT=${UNIT:-months}
 UNIT_COUNT=${UNIT_COUNT:-1}
@@ -16,8 +16,8 @@ TIMEOUT=${TIMEOUT:-120}
 MASTER_ONLY=${MASTER_ONLY:-True}
 #
 EOF
-cat /config/crontab.txt >> /config/crontab.run
+cat /config/crontab.txt >> /tmp/crontab.run
 
-[ -f /config/crontab.run ] && /usr/bin/crontab /config/crontab.run
+[ -f /tmp/crontab.run ] && /usr/bin/crontab /tmp/crontab.run
 
 /usr/sbin/cron -f -L 15

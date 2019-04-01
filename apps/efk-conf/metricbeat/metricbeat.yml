@@ -1,0 +1,45 @@
+# General config
+# if empty, use hostname
+#name: "my-shipper"
+#tags: ["service-X", "web-tier"]
+#
+# fields_under_root: true
+# fields: {project: "myproject", instance-id: "574734885120952459"}
+
+metricbeat.config:
+  modules:
+    # Directory + glob pattern to search for configuration files
+    path: ${path.config}/modules.d/*.yml
+    # Reload module configs as they change:
+    reload.enabled: false
+    # How often to check for changes
+    reload.period: 5s
+
+metricbeat.autodiscover:
+  providers:
+    - type: docker
+      hints.enabled: true
+
+processors:
+  - add_cloud_metadata: ~
+
+setup.dashboards.enabled: true
+setup.kibana.host: "kibana:5601"
+setup.kibana.protocol: "http"
+#setup.kibana.path: /kibana
+setup.template.name: "metricbeat"
+setup.template.pattern: "metricbeat-*"
+setup.template.overwrite: true
+
+#output.console:
+#  pretty: false
+#  codec.json:
+#    pretty: false
+#    escape_html: false
+#
+output.elasticsearch:
+  hosts: 'elasticsearch:9200'
+  index: "metricbeat-%{+yyyy.MM.dd}"
+
+#  username: '${ELASTICSEARCH_USERNAME:}'
+#  password: '${ELASTICSEARCH_PASSWORD:}'

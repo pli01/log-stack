@@ -1,0 +1,40 @@
+# General config
+# if empty, use hostname
+#name: "my-shipper"
+#tags: ["service-X", "web-tier"]
+#
+# fields_under_root: true
+# fields: {project: "myproject", instance-id: "574734885120952459"}
+
+heartbeat.config:
+  monitors:
+    # Directory + glob pattern to search for configuration files
+    path: ${path.config}/monitors.d/*.yml
+    # If enabled, heartbeat will periodically check the config.monitors path for changes
+    reload.enabled: false
+    # How often to check for changes
+    reload.period: 5s
+
+processors:
+  - add_cloud_metadata: ~
+
+setup.dashboards.enabled: true
+setup.kibana.host: "kibana:5601"
+setup.kibana.protocol: "http"
+#setup.kibana.path: /kibana
+setup.template.name: "heartbeat"
+setup.template.pattern: "heartbeat-*"
+setup.template.overwrite: true
+
+#output.console:
+#  pretty: false
+#  codec.json:
+#    pretty: false
+#    escape_html: false
+#
+output.elasticsearch:
+  hosts: 'elasticsearch:9200'
+  index: "heartbeat-%{+yyyy.MM.dd}"
+
+#  username: '${ELASTICSEARCH_USERNAME:}'
+#  password: '${ELASTICSEARCH_PASSWORD:}'

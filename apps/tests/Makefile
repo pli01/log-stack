@@ -42,7 +42,7 @@ run-test: up-test
 	@echo "# $@ "
 
 up-test: ${EFK_DOCKER_COMPOSE_RUN}
-	bash run-env-test.sh
+	bash -x run-env-test.sh
 
 clean-test: down-test ${EFK_TEST_RUNNER_SERVICE_NAME}-clean-image
 	@echo "# $@ "

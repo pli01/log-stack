@@ -13,8 +13,8 @@ actions:
       disable_action: False
     filters:
     - filtertype: pattern
-      kind: prefix
-      value: fluentd-
+      kind: regex
+      value: '^(fluentd-|metricbeat-|heartbeat-)'
       exclude:
     - filtertype: age
       source: name
@@ -37,8 +37,8 @@ actions:
       disable_action: False
     filters:
     - filtertype: pattern
-      kind: prefix
-      value: fluentd-
+      kind: regex
+      value: '^(fluentd-|metricbeat-|heartbeat-)'
       exclude:
     - filtertype: space
       disk_space: ${DISK_SPACE:20}

@@ -25,6 +25,10 @@ sudo chown debian. -R /opt/
 sudo chown debian. /fluentd/etc -R
 #
 find /fluentd/etc/ /etc/nginx/conf.d/ -ls
+
+# metricbeat
+( cd /opt/efk-conf/metricbeat && tar cf - . ) | ( cd /metricbeat && sudo tar xvf - )
+sudo chown root. -R /metricbeat/
 #
 sync ; sync
 echo "# $script_name inside testrunner container end"

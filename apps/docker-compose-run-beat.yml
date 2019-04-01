@@ -1,0 +1,27 @@
+version: '3.0'
+services:
+  metricbeat:
+    image: "${metricbeat_image_full}"
+    user: root
+    restart: always
+    network_mode: host
+    volumes:
+      - "${efk_stack_conf_dir}/metricbeat:/metricbeat:ro"
+      - metricbeat:/usr/share/metricbeat/data
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /proc:/hostfs/proc:ro
+      - /sys/fs/cgroup:/hostfs/sys/fs/cgroup:ro
+      - /:/hostfs:ro
+    command: ["--strict.perms=false", "--path.config", "/metricbeat", "-system.hostfs=/hostfs"]
+#    command: ["--strict.perms=false", "--path.config", "/metricbeat"]
+    extra_hosts:
+      - "elasticsearch:${ELASTICSEARCH_HOST:-127.0.0.1}" # The IP to access host from container
+      - "kibana:${KIBANA_HOST:-127.0.0.1}" # The IP to access host from container
+#    environment:
+#      - ELASTICSEARCH_HOST=${ELASTICSEARCH_HOST:-node1}
+#      - KIBANA_HOST=${KIBANA_HOST:-node1}
+#      - ELASTICSEARCH_USERNAME=${ELASTICSEARCH_USERNAME:-elastic}
+#      - ELASTICSEARCH_PASSWORD=${ELASTICSEARCH_PASSWORD:-changeme}
+#
+volumes:
+  metricbeat:

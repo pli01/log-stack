@@ -85,7 +85,7 @@ services:
 #      UNIT: days
       UNIT_COUNT: 1
       UNIT: months
-      DISK_SPACE: 10
+      DISK_SPACE: 20
       ES_HOST: elasticsearch
     depends_on:
       - elasticsearch
@@ -96,3 +96,49 @@ services:
           - curator
 #    volumes:
 #      - "${efk_stack_conf_dir}/curator/config:/config:ro"
+
+  heartbeat:
+    image: "${heartbeat_image_full}"
+    user: root
+    restart: always
+    depends_on:
+      - elasticsearch
+      - kibana
+    networks:
+      prodnetwork:
+        aliases:
+          - heartbeat
+    volumes:
+      - "${efk_stack_conf_dir}/heartbeat:/heartbeat:ro"
+      - heartbeat:/usr/share/heartbeat/data
+    command: ["--strict.perms=false", "--path.config", "/heartbeat"]
+
+#  metricbeat:
+#    image: "${metricbeat_image_full}"
+#    user: root
+#    restart: always
+#    depends_on:
+#      - elasticsearch
+#      - kibana
+#    network_mode: host
+#    volumes:
+#      - "${efk_stack_conf_dir}/metricbeat:/metricbeat:ro"
+#      - metricbeat:/usr/share/metricbeat/data
+#      - /var/run/docker.sock:/var/run/docker.sock
+#      - /proc:/hostfs/proc:ro
+#      - /sys/fs/cgroup:/hostfs/sys/fs/cgroup:ro
+#      - /:/hostfs:ro
+#    command: ["--strict.perms=false", "--path.config", "/metricbeat", "-system.hostfs=/hostfs"]
+##    command: ["--strict.perms=false", "--path.config", "/metricbeat"]
+#    extra_hosts:
+#      - "elasticsearch:${ELASTICSEARCH_HOST:-127.0.0.1" # The IP to access host from container
+#      - "kibana:${KIBANA_HOST:-127.0.0.1}" # The IP to access host from container
+##    environment:
+##      - ELASTICSEARCH_HOST=${ELASTICSEARCH_HOST:-node1}
+##      - KIBANA_HOST=${KIBANA_HOST:-node1}
+##      - ELASTICSEARCH_USERNAME=${ELASTICSEARCH_USERNAME:-elastic}
+##      - ELASTICSEARCH_PASSWORD=${ELASTICSEARCH_PASSWORD:-changeme}
+##
+volumes:
+#  metricbeat:
+  heartbeat:
