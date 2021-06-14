@@ -6,7 +6,7 @@ echo "$http_proxy $no_proxy" && set -x && [ -z "$MIRROR_DEBIAN" ] || \
      sed -i.orig -e "s|http://deb.debian.org/debian|$MIRROR_DEBIAN/debian9|g ; s|http://security.debian.org/debian-security|$MIRROR_DEBIAN/debian9-security|g" /etc/apt/sources.list ; \
     apt-get -q update && \
     apt-get install -qy --no-install-recommends --force-yes \
-    cron python-pip python-urllib3 python-yaml python-click curl && \
+    cron python-pip python-urllib3 python-yaml python-click curl python-setuptools python-wheel && \
     apt-get autoremove -y && apt-get autoclean -y &&\
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 

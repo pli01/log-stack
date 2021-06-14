@@ -6,21 +6,21 @@
 ##############################################
 
 #export PORT=80
+export APP ?= log-stack
 export SHELL=/bin/bash
-export APP = log-stack
 export ROOT_DIR= $(shell pwd)
 export APP_PATH := $(shell cd apps && pwd)
-export APP_DATA := $(APP_PATH)
-export APP_VERSION := $(shell bash ./ci/version.sh 2>&- || cat VERSION)
+export APP_DATA ?= $(APP_PATH)/data
+export APP_VERSION ?= $(shell bash ./ci/version.sh 2>&- || cat VERSION)
 export DC_DIR=${APP_PATH}
 export DC_PREFIX=${DC_DIR}/docker-compose
 export BUILD_DIR=${ROOT_DIR}/${APP}-${APP_VERSION}-build
 
-export NPM_REGISTRY = $(shell echo $$NPM_REGISTRY )
-export SASS_REGISTRY = $(shell echo $$SASS_REGISTRY )
+export NPM_REGISTRY ?= $(shell echo $$NPM_REGISTRY )
+export SASS_REGISTRY ?= $(shell echo $$SASS_REGISTRY )
 export dml_url = $(shell echo $$dml_url )
 export openstack_token = $(shell echo $$openstack_token )
-export publish_dir = log-stack
+export publish_dir ?= $(APP)
 
 export dollar = $(shell echo \$$)
 export curl_args = $(shell echo $$curl_args)
@@ -33,9 +33,13 @@ export DC_USE_TTY     := $(shell test -t 1 || echo "-T" )
 export DC_BUILD_ARGS := --pull --no-cache --force-rm
 export DC_RUN_ARGS   := -d --no-build
 
-export ES_MEM=2048m
-export ES_HOST=elasticsearch
-export KIBANA_ACCESS_LIST := ["all"]
+# elastic conf
+export ES_MEM ?= 2048m
+export ES_HOST ?= elasticsearch
+export KIBANA_ACCESS_LIST ?= ["all"]
+# fluentd conf
+export UNIT_COUNT ?= 10
+export DISK_SPACE ?= 10
 
 vm_max_count		:= $(shell cat /etc/sysctl.conf | egrep vm.max_map_count\s*=\s*262144 && echo true)
 
@@ -44,7 +48,10 @@ DC := docker-compose
 
 SHELL:=/bin/bash
 
+# override default values
 include ./artifacts
+
+# include app default values
 include apps/Makefile.efk
 
 

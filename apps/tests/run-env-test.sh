@@ -25,6 +25,7 @@ if [ "$test_result" -gt 0 ] ;then
 	echo "ERROR: $test_output"
 	ret=$test_result
 	test_status=FAILED
+	exit $ret
 fi
 echo "# $script_name: $test_name $test_status"
 

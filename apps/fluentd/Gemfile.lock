@@ -1,0 +1,74 @@
+GEM
+  remote: https://rubygems.org/
+  specs:
+    concurrent-ruby (1.1.6)
+    cool.io (1.6.0)
+    dig_rb (1.0.1)
+    elasticsearch (7.5.0)
+      elasticsearch-api (= 7.5.0)
+      elasticsearch-transport (= 7.5.0)
+    elasticsearch-api (7.5.0)
+      multi_json
+    elasticsearch-transport (7.5.0)
+      faraday (>= 0.14, < 1)
+      multi_json
+    excon (0.73.0)
+    faraday (0.17.3)
+      multipart-post (>= 1.2, < 3)
+    fluent-config-regexp-type (1.0.0)
+      fluentd (> 1.0.0, < 2)
+    fluent-plugin-detect-exceptions (0.0.13)
+      fluentd (>= 0.10)
+    fluent-plugin-elasticsearch (2.8.6)
+      elasticsearch
+      excon
+      fluentd (>= 0.14.20)
+    fluent-plugin-grep (0.3.4)
+      fluentd
+    fluent-plugin-grok-parser (2.6.1)
+      fluentd (>= 0.14.6, < 2)
+    fluent-plugin-multi-format-parser (1.0.0)
+      fluentd (>= 0.14.0, < 2)
+    fluent-plugin-parser (0.4.1)
+      fluentd (>= 0.10.54)
+    fluent-plugin-rewrite-tag-filter (2.2.0)
+      fluent-config-regexp-type
+      fluentd (>= 0.14.2, < 2)
+    fluentd (1.7.4)
+      cool.io (>= 1.4.5, < 2.0.0)
+      dig_rb (~> 1.0.0)
+      http_parser.rb (>= 0.5.1, < 0.7.0)
+      msgpack (>= 1.2.0, < 2.0.0)
+      serverengine (>= 2.0.4, < 3.0.0)
+      sigdump (~> 0.2.2)
+      strptime (>= 0.2.2, < 1.0.0)
+      tzinfo (~> 2.0)
+      tzinfo-data (~> 1.0)
+      yajl-ruby (~> 1.0)
+    http_parser.rb (0.6.0)
+    msgpack (1.3.3)
+    multi_json (1.14.1)
+    multipart-post (2.1.1)
+    serverengine (2.2.1)
+      sigdump (~> 0.2.2)
+    sigdump (0.2.4)
+    strptime (0.2.3)
+    tzinfo (2.0.2)
+      concurrent-ruby (~> 1.0)
+    tzinfo-data (1.2020.1)
+      tzinfo (>= 1.0.0)
+    yajl-ruby (1.4.1)
+
+PLATFORMS
+  ruby
+
+DEPENDENCIES
+  elasticsearch-transport (= 7.5.0)
+  fluent-plugin-detect-exceptions (= 0.0.13)
+  fluent-plugin-elasticsearch (= 2.8.6)
+  fluent-plugin-grep (= 0.3.4)
+  fluent-plugin-grok-parser (= 2.6.1)
+  fluent-plugin-multi-format-parser (= 1.0.0)
+  fluent-plugin-parser (= 0.4.1)
+  fluent-plugin-rewrite-tag-filter (= 2.2.0)
+  fluentd (>= 0.14.2, <= 1.7.4)

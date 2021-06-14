@@ -1,0 +1,30 @@
+version: '3.0'
+networks:
+  prodnetwork:
+    driver: bridge
+    driver_opts:
+      com.docker.network.driver.mtu: 1450
+services:
+  fluentd:
+    image: "${fluentd_image_full}"
+    build:
+      context: fluentd
+      dockerfile: Dockerfile
+      args:
+        - http_proxy=$http_proxy
+        - https_proxy=$https_proxy
+        - no_proxy=$no_proxy
+        - RUBY_URL
+        - MIRROR_DEBIAN
+
+    restart: always
+    networks:
+      prodnetwork:
+        aliases:
+          - fluentd
+    ports:
+      - 24224:24224
+      - 5140:5140
+      - 514:10514/udp
+#    volumes:
+#      - "${efk_stack_conf_dir}/fluentd/conf:/fluentd/etc:rw"
