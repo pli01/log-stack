@@ -60,6 +60,7 @@ services:
       - discovery.type=single-node
       - bootstrap.memory_lock=true
       - "ES_JAVA_OPTS=-Xms${ES_MEM} -Xmx${ES_MEM}"
+      - TAKE_FILE_OWNERSHIP=true
     ulimits:
       memlock:
         soft: -1
@@ -81,11 +82,11 @@ services:
   curator:
     image: "${curator_image_full}"
     environment:
-#      UNIT_COUNT: 10
-#      UNIT: days
-      UNIT_COUNT: 1
-      UNIT: months
-      DISK_SPACE: 20
+      UNIT_COUNT: ${UNIT_COUNT:-10}
+      UNIT: days
+#      UNIT_COUNT: 1
+#      UNIT: months
+      DISK_SPACE: ${DISK_SPACE:-10}
       ES_HOST: elasticsearch
     depends_on:
       - elasticsearch

@@ -1,22 +1,33 @@
-EFK_SERVICE_NAME = efk
-BEAT_SERVICE_NAME = beat
+EFK_SERVICE_NAME         = efk
 EFK_DOCKER_COMPOSE_BUILD = ${DC_PREFIX}-build-$(EFK_SERVICE_NAME).yml
-EFK_DOCKER_COMPOSE_RUN = ${DC_PREFIX}-run-$(EFK_SERVICE_NAME).yml
-BEAT_DOCKER_COMPOSE_RUN = ${DC_PREFIX}-run-$(BEAT_SERVICE_NAME).yml
-BEAT_PULL_IMAGES = metricbeat heartbeat
-EFK_PULL_IMAGES = elasticsearch nginx kibana $(BEAT_PULL_IMAGES)
-
-BEAT_BUILD_IMAGES = metricbeat heartbeat
-EFK_BUILD_IMAGES = elasticsearch curator kibana nginx fluentd $(BEAT_BUILD_IMAGES)
+EFK_DOCKER_COMPOSE_RUN   = ${DC_PREFIX}-run-$(EFK_SERVICE_NAME).yml
+EFK_PULL_IMAGES          = elasticsearch nginx kibana
+EFK_PUSH_IMAGES          = curator fluentd
+EFK_BUILD_IMAGES         = elasticsearch curator kibana nginx fluentd
 
 # Image name:version
-export nginx_image_full = nginx:1.14
-export fluentd_image_full = ${APP}-fluentd:v1.1.3-debian
+export nginx_image_full         = nginx:1.14
 export elasticsearch_image_full = docker.elastic.co/elasticsearch/elasticsearch-oss:6.2.4
-export kibana_image_full = docker.elastic.co/kibana/kibana-oss:6.2.4
-export curator_image_full = ${APP}-curator:stretch
-export metricbeat_image_full = docker.elastic.co/beats/metricbeat:6.6.2
-export heartbeat_image_full = docker.elastic.co/beats/heartbeat:6.6.2
+export kibana_image_full        = docker.elastic.co/kibana/kibana-oss:6.2.4
+export curator_image_full       = ${APP}-curator:stretch
+export fluentd_image_full       = ${APP}-fluentd:v1.1.3-debian
+
+BEAT_ENABLE = 0
+ifeq ($(BEAT_ENABLE),1)
+BEAT_SERVICE_NAME       = beat
+BEAT_DOCKER_COMPOSE_RUN = ${DC_PREFIX}-run-$(BEAT_SERVICE_NAME).yml
+BEAT_PULL_IMAGES        = metricbeat heartbeat
+BEAT_BUILD_IMAGES       = metricbeat heartbeat
+EFK_BUILD_IMAGES        += $(BEAT_BUILD_IMAGES)
+EFK_PULL_IMAGES         += $(BEAT_PULL_IMAGES)
+endif
+export metricbeat_image_full    = docker.elastic.co/beats/metricbeat:6.6.2
+export heartbeat_image_full     = docker.elastic.co/beats/heartbeat:6.6.2
+
+DOCKER_REGISTRY   ?= ghcr.io
+DOCKER_REPOSITORY ?= pli01/${APP}
+DOCKER_REGISTRY_USERNAME ?=
+DOCKER_REGISTRY_TOKEN ?=
 
 # Env build (ARG)
 export MIRROR_DEBIAN = $(shell echo $$MIRROR_DEBIAN )
@@ -30,11 +41,12 @@ export efk_stack_data_dir = ${APP_DATA}
 export kibana_access_conf_file = ${efk_stack_conf_dir}/nginx/efk_blockips.conf
 export OPENRC_PATH := ${APP_DATA}
 
-$(EFK_SERVICE_NAME)-build: $(EFK_SERVICE_NAME)-build-image build-dir $(EFK_SERVICE_NAME)-save-image
+export
+
 
 $(EFK_SERVICE_NAME)-clean: $(EFK_SERVICE_NAME)-clean-image
 
-$(EFK_SERVICE_NAME)-build-image: $(EFK_SERVICE_NAME)-check-config-image $(EFK_SERVICE_NAME)-pull-image
+$(EFK_SERVICE_NAME)-build: $(EFK_SERVICE_NAME)-check-config-image $(EFK_SERVICE_NAME)-pull-image
 	@echo building ${APP} $(EFK_SERVICE_NAME)
 	( cd ${APP_PATH} && ${DC} -f $(EFK_DOCKER_COMPOSE_BUILD) build ${DC_BUILD_ARGS} )
 
@@ -46,19 +58,34 @@ $(EFK_SERVICE_NAME)-check-config-image:
 
 $(EFK_SERVICE_NAME)-pull-image:
 	@echo pull ${APP} $(EFK_SERVICE_NAME)
-	if [ ! -z "$(EFK_PULL_IMAGES)" ] ; then ( cd ${APP_PATH} && ${DC} -f $(EFK_DOCKER_COMPOSE_BUILD) pull $(EFK_PULL_IMAGES) ) ; fi
+	if [ ! -z "$(EFK_PULL_IMAGES)" ] ; then ( cd ${APP_PATH} && bash retry_cmd.sh ${DC} -f $(EFK_DOCKER_COMPOSE_BUILD) pull $(EFK_PULL_IMAGES) ) ; fi
 
 $(EFK_SERVICE_NAME)-save-image:
 	for service in $(EFK_BUILD_IMAGES) ; do \
 	image_name=$$(cd ${APP_PATH} && ${DC} -f $(EFK_DOCKER_COMPOSE_BUILD) config | \
-	python -c 'import sys, yaml, json; cfg = json.loads(json.dumps(yaml.load(sys.stdin), sys.stdout, indent=4)); print cfg["services"]["'$$service'"]["image"]') ; \
+	python -c 'import sys, yaml, json; cfg = json.loads(json.dumps(yaml.safe_load(sys.stdin), sys.stdout, indent=4)); print cfg["services"]["'$$service'"]["image"]') ; \
 	  docker image save $$image_name | gzip -9c >  $(BUILD_DIR)/$(APP)-$(EFK_SERVICE_NAME)-$$service-$(APP_VERSION)-image.tar.gz ; \
 	  cp $(BUILD_DIR)/$(APP)-$(EFK_SERVICE_NAME)-$$service-$(APP_VERSION)-image.tar.gz $(BUILD_DIR)/$(APP)-$(EFK_SERVICE_NAME)-$$service-latest-image.tar.gz ; \
 	done
 
+registry-login:
+	@if [ -z "${DOCKER_REGISTRY_TOKEN}" -a -z "${DOCKER_REGISTRY_USERNAME}" ] ; then echo "ERROR: DOCKER_REGISTRY_TOKEN and DOCKER_REGISTRY_USERNAME not defined" ; exit 1 ; fi
+	@[ -n "${DOCKER_REGISTRY_TOKEN}" -a -n "${DOCKER_REGISTRY_USERNAME}" ] && echo "${DOCKER_REGISTRY_TOKEN}" | docker login ${DOCKER_REGISTRY} -u ${DOCKER_REGISTRY_USERNAME}  --password-stdin
+
+registry-logout:
+	@[ -n "${DOCKER_REGISTRY}" ] && docker logout ${DOCKER_REGISTRY} || true
+
+$(EFK_SERVICE_NAME)-push-image: registry-login
+	for service in $(EFK_PUSH_IMAGES) ; do \
+	image_name=$$(cd ${APP_PATH} && ${DC} -f $(EFK_DOCKER_COMPOSE_BUILD) config | \
+	python -c 'import sys, yaml, json; cfg = json.loads(json.dumps(yaml.safe_load(sys.stdin), sys.stdout, indent=4)); print cfg["services"]["'$$service'"]["image"]') ; \
+         docker tag $$image_name ${DOCKER_REGISTRY}/${DOCKER_REPOSITORY}/$$image_name ; \
+         docker push ${DOCKER_REGISTRY}/${DOCKER_REPOSITORY}/$$image_name ; \
+	done
+
 $(EFK_SERVICE_NAME)-clean-image:
 	@(cd ${APP_PATH} && ${DC} -f $(EFK_DOCKER_COMPOSE_BUILD) config | \
-           python -c 'import sys, yaml, json; json.dump(yaml.load(sys.stdin), sys.stdout, indent=4)' | \
+           python -c 'import sys, yaml, json; json.dump(yaml.safe_load(sys.stdin), sys.stdout, indent=4)' | \
            jq -r '.services[] | . as $(dollar)a | select($(dollar)a.build) | .image' ) | while read image_name ; do \
            docker rmi $$image_name || true ; \
         done
@@ -96,28 +123,57 @@ $(EFK_SERVICE_NAME)-genere-config:
             echo 'deny all;' ) | tee -a ${kibana_access_conf_file}.new ; \
          mv ${kibana_access_conf_file}.new ${kibana_access_conf_file}
 
-$(EFK_SERVICE_NAME)-up: $(EFK_SERVICE_NAME)-genere-config $(EFK_SERVICE_NAME)-up-efk $(EFK_SERVICE_NAME)-up-beat
-$(EFK_SERVICE_NAME)-up-efk:
+$(EFK_SERVICE_NAME)-pull: $(EFK_SERVICE_NAME)-pull-common $(EFK_SERVICE_NAME)-pull-custom
+
+$(EFK_SERVICE_NAME)-pull-common:
+	if [ ! -z "$(EFK_PULL_IMAGES)" ] ; then ( cd ${APP_PATH} && bash retry_cmd.sh ${DC} -f $(EFK_DOCKER_COMPOSE_RUN) pull $(EFK_PULL_IMAGES) ) ; fi
+
+$(EFK_SERVICE_NAME)-pull-custom: # registry-login
+	for service in $(EFK_PUSH_IMAGES) ; do \
+	image_name=$$(cd ${APP_PATH} && ${DC} -f $(EFK_DOCKER_COMPOSE_BUILD) config | \
+	python -c 'import sys, yaml, json; cfg = json.loads(json.dumps(yaml.safe_load(sys.stdin), sys.stdout, indent=4)); print cfg["services"]["'$$service'"]["image"]') ; \
+         docker pull ${DOCKER_REGISTRY}/${DOCKER_REPOSITORY}/$$image_name ; \
+         docker tag ${DOCKER_REGISTRY}/${DOCKER_REPOSITORY}/$$image_name $$image_name ; \
+         done
+
+$(EFK_SERVICE_NAME)-data-dir:
+	[ -d "${efk_stack_data_dir}" ] || mkdir -p "${efk_stack_data_dir}"
+$(EFK_SERVICE_NAME)-clean-data-dir:
+	[ -d "${efk_stack_data_dir}" ] && rm -rf "${efk_stack_data_dir}"
+
+
+$(EFK_SERVICE_NAME)-up-all: $(EFK_SERVICE_NAME)-up $(BEAT_SERVICE_NAME)-up
+$(EFK_SERVICE_NAME)-up: $(EFK_SERVICE_NAME)-genere-config $(EFK_SERVICE_NAME)-data-dir
 	@[ -f ${OPENRC_PATH}/.openrc.sh ] && source ${OPENRC_PATH}/.openrc.sh ; \
 	   ( cd ${APP_PATH} && ${DC} -f $(EFK_DOCKER_COMPOSE_RUN) up -d 2>&1 | grep -v orphan )
-$(EFK_SERVICE_NAME)-up-beat:
-	@echo "start beat" ; \
+
+$(BEAT_SERVICE_NAME)-up:
+	@echo "start $(BEAT_SERVICE_NAME)" ; \
 		ELASTICSEARCH_ID=$$(${DC} -f $(EFK_DOCKER_COMPOSE_RUN) ps -q elasticsearch) ; \
 		KIBANA_ID=$$(${DC} -f $(EFK_DOCKER_COMPOSE_RUN) ps -q kibana) ; \
 		export ELASTICSEARCH_HOST=$$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' $$ELASTICSEARCH_ID) ; \
 		export KIBANA_HOST=$$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' $$KIBANA_ID) ; \
 		( cd ${APP_PATH} && ${DC} -f $(BEAT_DOCKER_COMPOSE_RUN) up -d 2>&1 | grep -v orphan )
-$(EFK_SERVICE_NAME)-stop: $(EFK_SERVICE_NAME)-stop-efk $(EFK_SERVICE_NAME)-stop-beat
-$(EFK_SERVICE_NAME)-stop-efk:
+
+$(EFK_SERVICE_NAME)-stop-all: $(EFK_SERVICE_NAME)-stop $(BEAT_SERVICE_NAME)-stop
+$(EFK_SERVICE_NAME)-stop:
 	@( cd ${APP_PATH} && ${DC} -f $(EFK_DOCKER_COMPOSE_RUN) stop )
-$(EFK_SERVICE_NAME)-stop-beat:
+$(BEAT_SERVICE_NAME)-stop:
 	@( cd ${APP_PATH} && ${DC} -f $(BEAT_DOCKER_COMPOSE_RUN) stop )
-$(EFK_SERVICE_NAME)-rm: $(EFK_SERVICE_NAME)-rm-efk $(EFK_SERVICE_NAME)-rm-beat
+
+$(EFK_SERVICE_NAME)-rm-all: $(EFK_SERVICE_NAME)-rm $(BEAT_SERVICE_NAME)-rm
+$(EFK_SERVICE_NAME)-rm:
 	@( cd ${APP_PATH} && ${DC} -f $(EFK_DOCKER_COMPOSE_RUN) rm )
-$(EFK_SERVICE_NAME)-rm-beat:
+$(BEAT_SERVICE_NAME)-rm:
 	@( cd ${APP_PATH} && ${DC} -f $(BEAT_DOCKER_COMPOSE_RUN) rm )
-$(EFK_SERVICE_NAME)-down: $(EFK_SERVICE_NAME)-down-beat $(EFK_SERVICE_NAME)-down-efk
-$(EFK_SERVICE_NAME)-down-efk:
+
+$(EFK_SERVICE_NAME)-down-all: $(BEAT_SERVICE_NAME)-down $(EFK_SERVICE_NAME)-down
+$(EFK_SERVICE_NAME)-down:
 	@( cd ${APP_PATH} && ${DC} -f $(EFK_DOCKER_COMPOSE_RUN) down )
-$(EFK_SERVICE_NAME)-down-beat:
+$(BEAT_SERVICE_NAME)-down:
 	@( cd ${APP_PATH} && ${DC} -f $(BEAT_DOCKER_COMPOSE_RUN) down )
+
+$(EFK_SERVICE_NAME)-test-up: $(EFK_SERVICE_NAME)-test-up-api
+
+$(EFK_SERVICE_NAME)-test-up-%:
+	@( cd ${APP_PATH} && tests/test-up-$*.sh )

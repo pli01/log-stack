@@ -68,7 +68,7 @@ ${EFK_TEST_RUNNER_SERVICE_NAME}-check-config-image:
 
 ${EFK_TEST_RUNNER_SERVICE_NAME}-clean-image:
 	@(cd ${TEST_APP_PATH} && ${DC} -f ${EFK_TEST_RUNNER_DOCKER_COMPOSE_BUILD} config | \
-           python -c 'import sys, yaml, json; json.dump(yaml.load(sys.stdin), sys.stdout, indent=4)' | \
+           python -c 'import sys, yaml, json; json.dump(yaml.safe_load(sys.stdin), sys.stdout, indent=4)' | \
            jq -r '.services[] | . as $(dollar)a | select($(dollar)a.build) | .image' ) | while read image_name ; do \
            docker rmi $$image_name || true ; \
         done
