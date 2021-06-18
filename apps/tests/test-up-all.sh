@@ -1,5 +1,5 @@
 #!/bin/bash
-set -x
+# set -x
 echo "## connection test"
 
 host_ip=localhost

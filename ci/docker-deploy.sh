@@ -3,7 +3,7 @@
 # quick docker deploy
 #
 set -e -o pipefail
-set -x
+#set -x
 
 # optional dockerhub login
 export DOCKERHUB_LOGIN="${DOCKERHUB_LOGIN:-}"
