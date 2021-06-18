@@ -24,6 +24,8 @@ fi
 # if APP_ROLE defined use make up-${APP_ROLE}
 if [ -n "$APP_ROLE" ] ;then
  app_role="-${APP_ROLE}"
+else
+ app_role="-all"
 fi
 
 # download install repo
@@ -36,7 +38,7 @@ curl -kL -s $curl_args ${APP_URL} | \
       docker login --username $DOCKERHUB_LOGIN --password-stdin
 
   make registry-login
-  make efk-pull
+  make efk-pull$app_role
   make efk-down$app_role
   make efk-up$app_role
   make efk-test-up$app_role
