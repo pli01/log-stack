@@ -16,10 +16,10 @@ BEAT_ENABLE = 1
 ifeq ($(BEAT_ENABLE),1)
 BEAT_SERVICE_NAME       = beat
 BEAT_DOCKER_COMPOSE_RUN = ${DC_PREFIX}-run-$(BEAT_SERVICE_NAME).yml
-BEAT_PULL_IMAGES        = metricbeat heartbeat
-BEAT_BUILD_IMAGES       = metricbeat heartbeat
-EFK_BUILD_IMAGES        += $(BEAT_BUILD_IMAGES)
-EFK_PULL_IMAGES         += $(BEAT_PULL_IMAGES)
+BEAT_PULL_IMAGES        = metricbeat
+BEAT_BUILD_IMAGES       = metricbeat
+EFK_BUILD_IMAGES        += heartbeat
+EFK_PULL_IMAGES         += heartbeat
 endif
 export metricbeat_image_full    = docker.elastic.co/beats/metricbeat:6.6.2
 export heartbeat_image_full     = docker.elastic.co/beats/heartbeat:6.6.2
