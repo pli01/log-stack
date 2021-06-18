@@ -12,7 +12,7 @@ export kibana_image_full        = docker.elastic.co/kibana/kibana-oss:6.2.4
 export curator_image_full       = ${APP}-curator:stretch
 export fluentd_image_full       = ${APP}-fluentd:v1.1.3-debian
 
-BEAT_ENABLE = 0
+BEAT_ENABLE = 1
 ifeq ($(BEAT_ENABLE),1)
 BEAT_SERVICE_NAME       = beat
 BEAT_DOCKER_COMPOSE_RUN = ${DC_PREFIX}-run-$(BEAT_SERVICE_NAME).yml
@@ -123,6 +123,8 @@ $(EFK_SERVICE_NAME)-genere-config:
             echo 'deny all;' ) | tee -a ${kibana_access_conf_file}.new ; \
          mv ${kibana_access_conf_file}.new ${kibana_access_conf_file}
 
+$(EFK_SERVICE_NAME)-pull-all: $(EFK_SERVICE_NAME)-pull $(BEAT_SERVICE_NAME)-pull
+
 $(EFK_SERVICE_NAME)-pull: $(EFK_SERVICE_NAME)-pull-common $(EFK_SERVICE_NAME)-pull-custom
 
 $(EFK_SERVICE_NAME)-pull-common:
@@ -140,6 +142,9 @@ $(EFK_SERVICE_NAME)-data-dir:
 	[ -d "${efk_stack_data_dir}" ] || mkdir -p "${efk_stack_data_dir}"
 $(EFK_SERVICE_NAME)-clean-data-dir:
 	[ -d "${efk_stack_data_dir}" ] && rm -rf "${efk_stack_data_dir}"
+
+$(BEAT_SERVICE_NAME)-pull:
+	if [ ! -z "$(BEAT_PULL_IMAGES)" ] ; then ( cd ${APP_PATH} && bash retry_cmd.sh ${DC} -f $(BEAT_DOCKER_COMPOSE_RUN) pull $(BEAT_PULL_IMAGES) ) ; fi
 
 
 $(EFK_SERVICE_NAME)-up-all: $(EFK_SERVICE_NAME)-up $(BEAT_SERVICE_NAME)-up
@@ -173,7 +178,8 @@ $(EFK_SERVICE_NAME)-down:
 $(BEAT_SERVICE_NAME)-down:
 	@( cd ${APP_PATH} && ${DC} -f $(BEAT_DOCKER_COMPOSE_RUN) down )
 
-$(EFK_SERVICE_NAME)-test-up: $(EFK_SERVICE_NAME)-test-up-api
+
+$(EFK_SERVICE_NAME)-test-up: $(EFK_SERVICE_NAME)-test-up-all
 
 $(EFK_SERVICE_NAME)-test-up-%:
 	@( cd ${APP_PATH} && tests/test-up-$*.sh )
