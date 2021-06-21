@@ -37,12 +37,10 @@ eval curl -kL -s $curl_args ${APP_URL} | \
   [ -n "$DOCKERHUB_TOKEN" -a -n "$DOCKERHUB_LOGIN" ] &&  echo $DOCKERHUB_TOKEN | \
       docker login --username $DOCKERHUB_LOGIN --password-stdin
 
-  make registry-login
   make efk-pull$app_role
   make efk-down$app_role
   make efk-up$app_role
   make efk-test-up$app_role
-  make registry-logout || true
 
   [ -n "$DOCKERHUB_TOKEN" -a -n "$DOCKERHUB_LOGIN" ] && docker logout
   exit 0
