@@ -8,7 +8,7 @@ gem 'fluent-plugin-parser', '0.4.1'
 gem 'fluent-plugin-grok-parser', '2.6.1'
 gem 'fluent-plugin-detect-exceptions', '0.0.13'
 gem 'fluent-plugin-multi-format-parser', '1.0.0'
-gem 'fluentd', [">= 0.14.2", "<= 1.7.4"]
+gem 'fluentd', ">= 0.14.2", "<= 1.14.3"
 
 #gem 'fluent-plugin-systemd', '~>0.3.1'
 
